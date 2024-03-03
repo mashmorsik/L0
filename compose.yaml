@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:5000"
+  posgres:
+    image: "postgres:latest"
+    depends_on: [web]
+  nats:
+    image: "nats-streaming"
+    ports:
+      - "4223:4223"
+      - "8223:8223"
