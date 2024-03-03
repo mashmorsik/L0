@@ -8,6 +8,7 @@ type Item struct {
 	Name        string `json:"name"`
 	Sale        int    `json:"sale"`
 	Size        string `json:"size"`
+	Count       int    `json:"count"`
 	TotalPrice  int    `json:"total_price"`
 	NmId        int    `json:"nm_id"`
 	Brand       string `json:"brand"`

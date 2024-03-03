@@ -2,19 +2,23 @@ package order
 
 import (
 	"encoding/json"
-	"github.com/mashmorsik/L0/infrastructure/data"
+	"github.com/mashmorsik/L0/infrastructure/repository"
 	log "github.com/mashmorsik/L0/pkg/logger"
 	"github.com/mashmorsik/L0/pkg/models"
-	"github.com/nats-io/nats.go/jetstream"
+	"github.com/nats-io/nats.go"
 )
 
-type Order struct {
-	Repo data.Data
+type CreateOrder struct {
+	Repo repository.Repository
 }
 
-func UnmarshalOrder(msg jetstream.Msg) (*models.Order, error) {
+func NewCreateOrder(repo repository.Repository) CreateOrder {
+	return CreateOrder{Repo: repo}
+}
+
+func UnmarshalOrder(msg nats.Msg) (*models.Order, error) {
 	order := models.Order{}
-	err := json.Unmarshal(msg.Data(), &order)
+	err := json.Unmarshal(msg.Data, &order)
 	if err != nil {
 		log.Errf("can't unmarshal msg: %v, err: %s", msg, err)
 		return nil, err
@@ -23,15 +27,11 @@ func UnmarshalOrder(msg jetstream.Msg) (*models.Order, error) {
 	return &order, nil
 }
 
-func (o *Order) AddNewOrder(msg jetstream.Msg) error {
-	order, err := UnmarshalOrder(msg)
+func (c *CreateOrder) CreateNewOrder(order models.Order) error {
+	err := c.Repo.CreateOrder(order)
 	if err != nil {
-		log.Errf("can't unmarshal msg, err: %s", err)
-	}
-
-	err = o.Repo.AddOrder(*order)
-	if err != nil {
-		log.Errf("can't add order to database, err: %s", err)
+		log.Errf("can't create order, err: %s", err)
+		return nil
 	}
 
 	return nil

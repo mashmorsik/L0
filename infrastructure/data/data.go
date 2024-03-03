@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/golang-migrate/migrate/v4/source/github"
-	"github.com/mashmorsik/L0/pkg/models"
-
 	log "github.com/mashmorsik/L0/pkg/logger"
 	"os"
 
@@ -27,7 +25,7 @@ func NewData(db *sql.DB) *Data {
 	return &Data{db: db}
 }
 
-func (r *Data) Db() *sql.DB {
+func (r *Data) Master() *sql.DB {
 	return r.db
 }
 
@@ -43,10 +41,11 @@ func MustConnectPostgres() *sql.DB {
 		panic(err)
 	}
 
+	log.Infof("connected to db: %v", connection)
 	return connection
 }
 
-func MustMigrate(connection *sql.DB) error {
+func MustMigrate(connection *sql.DB) {
 	driver, err := postgres.WithInstance(connection, &postgres.Config{})
 	if err != nil {
 		panic(err)
@@ -64,8 +63,7 @@ func MustMigrate(connection *sql.DB) error {
 		migrationPath,
 		"l0", driver)
 	if err != nil {
-		log.Errf("can't migrate: %s", err)
-		return err
+		panic(err)
 	}
 
 	if err = m.Up(); err != nil {
@@ -76,20 +74,4 @@ func MustMigrate(connection *sql.DB) error {
 			panic(err)
 		}
 	}
-	return nil
-}
-
-func (r *Data) AddOrder(order models.Order) error {
-	sqlAddOrder := `
-	INSERT INTO order
-	VALUES($1)`
-	res, err := r.db.Exec(sqlAddOrder, order)
-	if err != nil {
-		log.Errf("can't add order, err: %s", err)
-		return err
-	}
-	ra, _ := res.RowsAffected()
-	fmt.Printf("rows affected: %v", ra)
-
-	return nil
 }
