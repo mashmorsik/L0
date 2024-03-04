@@ -1,14 +1,16 @@
 package main
 
 import (
-	data2 "github.com/mashmorsik/L0/infrastructure/data"
-	cache2 "github.com/mashmorsik/L0/infrastructure/data/cache"
+	"context"
+	"fmt"
+	data "github.com/mashmorsik/L0/infrastructure/data"
+	"github.com/mashmorsik/L0/infrastructure/data/cache"
 	"github.com/mashmorsik/L0/infrastructure/nats"
-	"github.com/mashmorsik/L0/infrastructure/nats/consumer"
-	"github.com/mashmorsik/L0/infrastructure/nats/producer"
 	"github.com/mashmorsik/L0/infrastructure/repository"
+	"github.com/mashmorsik/L0/infrastructure/server"
 	"github.com/mashmorsik/L0/internal/order"
 	log "github.com/mashmorsik/L0/pkg/logger"
+	"time"
 )
 
 func main() {
@@ -19,16 +21,26 @@ func main() {
 		log.Errf("can't return stream context, err: %s", err)
 		return
 	}
+	fmt.Println(streamContext)
 
-	conn := data2.MustConnectPostgres()
-	data2.MustMigrate(conn)
+	ctx := context.Background()
+	orderCache := cache.NewOrderCache(ctx, time.Hour)
 
-	orderRepo := repository.NewOrderRepo(data2.NewData(conn))
-	createOrder := order.NewCreateOrder(orderRepo)
+	conn := data.MustConnectPostgres()
+	data.MustMigrate(conn)
 
-	producer.NewNatsProducer(streamContext).PublishOrders()
-	consumer.NewNatsConsumer(createOrder)
+	orderRepo := repository.NewOrderRepo(data.NewData(conn))
 
-	cache := cache2.NewCache()
-	log.Infof("started cache: %v", cache)
+	createOrder := order.NewCreateOrder(orderRepo, orderCache)
+	err = createOrder.LoadCache()
+	if err != nil {
+		log.Errf("can't load cache, err: %s", err)
+		return
+	}
+
+	httpServer := server.NewServer(createOrder)
+	httpServer.StartServer()
+	//producer.NewNatsProducer(streamContext).PublishOrders()
+	//consumer.NewNatsConsumer(createOrder).ConsumeOrders(streamContext)
+	time.Sleep(time.Minute * 5)
 }

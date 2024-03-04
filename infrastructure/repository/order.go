@@ -96,6 +96,103 @@ func (r *OrderRepo) AddOrderItemsTx(tx *sql.Tx, o models.Order) error {
 	return nil
 }
 
+func (r *OrderRepo) GetOrders() ([]*models.Order, error) {
+	var ordersID []string
+	var orders []*models.Order
+
+	sqlGetOrdersID := `
+	SELECT uid 
+	FROM public.order`
+
+	rows, err := r.data.Master().Query(sqlGetOrdersID)
+	if err != nil {
+		log.Errf("can't get all orders, err: %s", err)
+		return nil, err
+	}
+
+	for rows.Next() {
+		var orderID string
+		if err = rows.Scan(&orderID); err != nil {
+			return nil, err
+		}
+		ordersID = append(ordersID, orderID)
+	}
+
+	for _, oID := range ordersID {
+		var order models.Order
+		sqlGetOrdersInfo := `
+		SELECT uid, track_number, entry, locale, internal_signature, customer_id, delivery_service, shard_key, sm_id, date_created, oof_shard 
+		FROM public.order 
+		WHERE uid = $1`
+		rows, err = r.data.Master().Query(sqlGetOrdersInfo, oID)
+		if err != nil {
+			log.Errf("can't get order info, err: %s", err)
+			return nil, err
+		}
+		for rows.Next() {
+			if err = rows.Scan(&order.OrderUid, &order.TrackNumber, &order.Entry, &order.Locale, &order.InternalSignature,
+				&order.CustomerId, &order.DeliveryService, &order.Shardkey, &order.SmId, &order.DateCreated, &order.OofShard); err != nil {
+				return nil, err
+			}
+		}
+		sqlGetDeliveryInfo := `
+		SELECT name, phone, zip, city, address, region, email 
+		FROM public.delivery
+		WHERE order_id = $1`
+		rows, err = r.data.Master().Query(sqlGetDeliveryInfo, oID)
+		if err != nil {
+			log.Errf("can't get delivery info, err: %s", err)
+			return nil, err
+		}
+		for rows.Next() {
+			if err = rows.Scan(&order.Delivery.Name, &order.Delivery.Phone, &order.Delivery.Zip, &order.Delivery.City,
+				&order.Delivery.Address, &order.Delivery.Region, &order.Delivery.Email); err != nil {
+				return nil, err
+			}
+		}
+		var paymentDt time.Time
+		sqlGetPaymentInfo := `
+		SELECT transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, 
+		       custom_fee 
+		FROM public.payment 
+		WHERE transaction = $1`
+		rows, err = r.data.Master().Query(sqlGetPaymentInfo, oID)
+		if err != nil {
+			log.Errf("can't get payment info, err: %s", err)
+			return nil, err
+		}
+		for rows.Next() {
+			if err = rows.Scan(&order.Payment.Transaction, &order.Payment.RequestId, &order.Payment.Currency,
+				&order.Payment.Provider, &order.Payment.Amount, &paymentDt, &order.Payment.Bank,
+				&order.Payment.DeliveryCost, &order.Payment.GoodsTotal, &order.Payment.CustomFee); err != nil {
+				return nil, err
+			}
+		}
+		order.Payment.PaymentDt = paymentDt.Unix()
+
+		sqlGetItemsInfo := `
+		SELECT chrt_id, track_number, price, rid, name, sale, size, count, total_price, nm_id, brand, status 
+		FROM public.order_item 
+		WHERE order_id = $1`
+		rows, err = r.data.Master().Query(sqlGetItemsInfo, oID)
+		if err != nil {
+			log.Errf("can't get items info, err: %s", err)
+			return nil, err
+		}
+		for rows.Next() {
+			var item models.Item
+			if err = rows.Scan(&item.ChrtId, &item.TrackNumber, &item.Price, &item.Rid, &item.Name, &item.Sale,
+				&item.Size, &item.Count, &item.TotalPrice, &item.NmId, &item.Brand, &item.Status); err != nil {
+				return nil, err
+			}
+			order.Items = append(order.Items, item)
+		}
+		orders = append(orders, &order)
+	}
+
+	return orders, nil
+}
+
 func (r *OrderRepo) CreateOrder(order models.Order) error {
 	tx, err := r.data.Master().Begin()
 	if err != nil {

@@ -11,4 +11,5 @@ type Repository interface {
 	AddPaymentTx(tx *sql.Tx, o models.Order) error
 	AddOrderItemsTx(tx *sql.Tx, o models.Order) error
 	CreateOrder(order models.Order) error
+	GetOrders() ([]*models.Order, error)
 }

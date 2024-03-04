@@ -15,13 +15,13 @@ type OrderCache struct {
 	EvictionDuration time.Duration
 }
 
+func NewOrderCache(ctx context.Context, evictionDuration time.Duration) OrderCache {
+	return OrderCache{Ctx: ctx, EvictionDuration: evictionDuration}
+}
+
 type Item struct {
 	Order    models.Order
 	Eviction time.Time
-}
-
-func NewCache() *OrderCache {
-	return &OrderCache{}
 }
 
 func (c *OrderCache) Set(key string, order models.Order, expiration time.Duration) {
