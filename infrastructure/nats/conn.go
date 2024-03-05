@@ -3,6 +3,7 @@ package nats
 import (
 	log "github.com/mashmorsik/L0/pkg/logger"
 	"github.com/nats-io/nats.go"
+	jss "github.com/nats-io/nats.go/jetstream"
 )
 
 const (
@@ -23,13 +24,26 @@ func Connect() (nats.JetStreamContext, error) {
 	return stream, nil
 }
 
+func Conn() (jss.JetStream, error) {
+	nc, err := nats.Connect(nats.DefaultURL)
+	if err != nil {
+		return nil, err
+	}
+
+	stream, err := jss.New(nc)
+	if err != nil {
+		return nil, err
+	}
+	return stream, nil
+}
+
 func JetStreamInit() (nats.JetStreamContext, error) {
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
 		return nil, err
 	}
 
-	js, err := nc.JetStream(nats.PublishAsyncMaxPending(256))
+	js, err := nc.JetStream()
 	if err != nil {
 		return nil, err
 	}

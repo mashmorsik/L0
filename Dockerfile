@@ -14,4 +14,3 @@ EXPOSE "8080:8080"
 
 USER myuser
 ENTRYPOINT ["app"]
-# docker run -p 4223:4223 -p 8223:8223 nats-streaming -p 4223 -m 8223

@@ -7,7 +7,7 @@ create table if not exists public.order
     internal_signature text,
     customer_id        text                     not null check (length(customer_id) <= 50),
     delivery_service   text                     not null check (length(delivery_service) <= 50),
-    shard_key           text                     not null check (length(shard_key) <= 10),
+    shard_key          text                     not null check (length(shard_key) <= 10),
     sm_id              bigint                   not null,
     date_created       timestamp with time zone not null,
     oof_shard          text                     not null check (length(oof_shard) <= 10)
@@ -16,7 +16,7 @@ create table if not exists public.order
 create table if not exists public.delivery
 (
     id       bigint generated always as identity primary key,
-    order_id text not null references public.order(uid),
+    order_id text not null references public.order (uid),
     name     text not null check (length(name) <= 50),
     phone    text not null check (length(phone) <= 12),
     zip      text not null check (length(zip) <= 15),
@@ -29,7 +29,7 @@ create table if not exists public.delivery
 create table if not exists public.payment
 (
     id            bigint generated always as identity primary key,
-    transaction   text        not null references public.order(uid),
+    transaction   text        not null references public.order (uid),
     request_id    text        not null,
     currency      text        not null check (length(currency) <= 10),
     provider      text        not null check (length(provider) <= 50),
@@ -44,7 +44,7 @@ create table if not exists public.payment
 create table if not exists public.order_item
 (
     id           bigint generated always as identity primary key,
-    order_id     text    not null references public.order(uid),
+    order_id     text    not null references public.order (uid),
     chrt_id      bigint  not null,
     track_number text    not null check (length(track_number) <= 50),
     price        numeric not null,

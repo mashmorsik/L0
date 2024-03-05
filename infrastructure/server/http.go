@@ -1,10 +1,10 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/mashmorsik/L0/internal/order"
 	log "github.com/mashmorsik/L0/pkg/logger"
+	_interface "github.com/mashmorsik/L0/web"
 	"net/http"
 )
 
@@ -36,13 +36,12 @@ func (s *HTTPServer) getOrderInfoHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	orderJSON, err := json.Marshal(cachedOrder)
+	html := _interface.DisplayOrder(*cachedOrder)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	_, err = w.Write([]byte(html))
 	if err != nil {
-		http.Error(w, "Failed to marshal order information to JSON", http.StatusInternalServerError)
-		return
+		log.Errf("failed to write HTML response: %s", err)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	w.Write(orderJSON)
 }
