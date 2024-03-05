@@ -35,12 +35,11 @@ func (c *CreateOrder) CreateNewOrder(order models.Order) error {
 	err := c.Repo.CreateOrder(order)
 	if err != nil {
 		log.Errf("can't create order, err: %s", err)
-		//нужно ли возвращать здесь ошибку?
 		return nil
 	}
 
 	c.Cache.Set(order.OrderUid, order, time.Hour)
-	log.Infof("added order: %s to cache", order.OrderUid)
+
 	fmt.Println(c.Cache.Get(order.OrderUid))
 
 	time.Sleep(time.Second * 5)

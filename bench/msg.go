@@ -76,7 +76,7 @@ func generateItems(f *gofakeit.Faker, trackNum string) []models.Item {
 		count := f.IntRange(1, 5)
 
 		items[i] = models.Item{
-			ChrtId:      f.Int(),
+			ChrtId:      f.IntRange(1, 10000000),
 			TrackNumber: trackNum,
 			Price:       price,
 			Rid:         genID(f),

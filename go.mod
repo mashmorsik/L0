@@ -6,18 +6,19 @@ toolchain go1.22.0
 
 require (
 	github.com/brianvoe/gofakeit/v7 v7.0.2
+	github.com/go-playground/assert/v2 v2.2.0
+	github.com/go-playground/validator/v10 v10.19.0
 	github.com/golang-migrate/migrate/v4 v4.17.0
+	github.com/golang/mock v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/nats-io/nats.go v1.33.1
 	github.com/rs/zerolog v1.32.0
-	github.com/shopspring/decimal v1.3.1
 )
 
 require (
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.19.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-github/v39 v39.2.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
