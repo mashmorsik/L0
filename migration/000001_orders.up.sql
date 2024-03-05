@@ -33,12 +33,12 @@ create table if not exists public.payment
     request_id    text        not null,
     currency      text        not null check (length(currency) <= 10),
     provider      text        not null check (length(provider) <= 50),
-    amount        numeric     not null,
+    amount        int         not null,
     payment_dt    timestamptz not null,
     bank          text        not null check (length(bank) <= 50),
-    delivery_cost numeric     not null,
-    goods_total   numeric     not null,
-    custom_fee    numeric     not null
+    delivery_cost int         not null,
+    goods_total   int         not null,
+    custom_fee    int         not null
 );
 
 create table if not exists public.order_item

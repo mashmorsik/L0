@@ -3,12 +3,11 @@ package nats
 import (
 	log "github.com/mashmorsik/L0/pkg/logger"
 	"github.com/nats-io/nats.go"
-	jss "github.com/nats-io/nats.go/jetstream"
 )
 
 const (
-	StreamName     = "ORDER"
-	StreamSubjects = "ORDER.*"
+	StreamName     = "WBORDER"
+	StreamSubjects = "WBORDER.*"
 )
 
 func Connect() (nats.JetStreamContext, error) {
@@ -19,19 +18,6 @@ func Connect() (nats.JetStreamContext, error) {
 	err = CreateStream(stream)
 	if err != nil {
 		log.Errf("can't create stream, err: %s", err)
-		return nil, err
-	}
-	return stream, nil
-}
-
-func Conn() (jss.JetStream, error) {
-	nc, err := nats.Connect(nats.DefaultURL)
-	if err != nil {
-		return nil, err
-	}
-
-	stream, err := jss.New(nc)
-	if err != nil {
 		return nil, err
 	}
 	return stream, nil
@@ -57,6 +43,17 @@ func CreateStream(jetStream nats.JetStreamContext) error {
 		return err
 	}
 
+	//stream, err := jetStream.AddStream(&nats.StreamConfig{
+	//	Name:     StreamName,
+	//	Subjects: []string{StreamSubjects},
+	//})
+	//if err != nil {
+	//	log.Errf("can't create stream, err: %s", err)
+	//	return nil
+	//}
+	//
+	//log.Infof("created stream, stream: %v", stream)
+
 	if stream == nil {
 		log.Infof("Creating stream: %s\n", StreamName)
 
@@ -64,7 +61,10 @@ func CreateStream(jetStream nats.JetStreamContext) error {
 			Name:     StreamName,
 			Subjects: []string{StreamSubjects},
 		})
-
+		if err != nil {
+			log.Errf("can't create stream, err: %s", err)
+			return nil
+		}
 	}
 	return nil
 }

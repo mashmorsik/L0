@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	SubjectNameReviewCreated = "ORDER.test"
+	SubjectNameCreated = "WBORDER.test"
 )
 
 type NatsConsumer struct {
@@ -22,7 +22,7 @@ func NewNatsConsumer(o order.CreateOrder) *NatsConsumer {
 
 func (n *NatsConsumer) ConsumeOrders(ctx context.Context, js nats.JetStreamContext) {
 	msgCh := make(chan *nats.Msg, 8192)
-	_, err := js.ChanSubscribe(SubjectNameReviewCreated, msgCh)
+	_, err := js.ChanSubscribe(SubjectNameCreated, msgCh)
 	if err != nil {
 		log.Errf("Unable to ChanSubscribe, err: %s", err)
 		return
@@ -30,7 +30,7 @@ func (n *NatsConsumer) ConsumeOrders(ctx context.Context, js nats.JetStreamConte
 	for {
 		select {
 		case msg := <-msgCh:
-			fmt.Println("[Received]", msg.Data)
+			fmt.Println("[Received]", msg.Subject)
 			n.orderHandler(msg)
 		case <-ctx.Done():
 			log.Errf("consumer ctx.Done, err: %s", err)

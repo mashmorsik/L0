@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	SubjectNameReviewCreated = "ORDER.test"
+	SubjectNameCreated = "WBORDER.test"
 )
 
 type NatsProducer struct {
@@ -18,7 +18,7 @@ func NewNatsProducer(streamContext nats.JetStreamContext) *NatsProducer {
 }
 
 func (n *NatsProducer) PublishOrders(fakeOrder string) {
-	_, err := n.streamContext.Publish(SubjectNameReviewCreated, []byte(fakeOrder))
+	_, err := n.streamContext.Publish(SubjectNameCreated, []byte(fakeOrder))
 	if err != nil {
 		log.Println(err)
 	} else {

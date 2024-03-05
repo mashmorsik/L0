@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/mashmorsik/L0/pkg/models"
-	"github.com/shopspring/decimal"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func GenerateMsg() *models.Order {
@@ -17,15 +17,15 @@ func GenerateMsg() *models.Order {
 	trackNumber := strings.ReplaceAll(strings.ToUpper(f.HipsterWord()), " ", "") +
 		strings.ReplaceAll(strings.ToUpper(f.HipsterWord()), " ", "")
 	items := generateItems(f, trackNumber)
-	goodsTotal := func() decimal.Decimal {
-		var t decimal.Decimal
+	goodsTotal := func() int {
+		var t int
 		for _, item := range items {
-			t = t.Add(item.TotalPrice)
+			t += item.TotalPrice
 		}
 		return t
 	}()
-	deliveryCost := decimal.NewFromInt(int64((f.RandomInt([]int{100, 200, 300, 400}))))
-	customFee := decimal.NewFromInt(int64(f.IntRange(0, 200)))
+	deliveryCost := f.RandomInt([]int{100, 200, 300, 400})
+	customFee := f.IntRange(0, 200)
 
 	fakeOrd := models.Order{
 		OrderUid:    orderID,
@@ -45,7 +45,7 @@ func GenerateMsg() *models.Order {
 			RequestId:    genID(f),
 			Currency:     f.CurrencyShort(),
 			Provider:     f.RandomString([]string{"applepay", "paypal", "onlinekassa"}),
-			Amount:       deliveryCost.Add(goodsTotal).Add(customFee),
+			Amount:       deliveryCost + goodsTotal + customFee,
 			PaymentDt:    f.PastDate().Unix(),
 			Bank:         f.RandomString([]string{"sber", "tinkoff", "alpha", "raif"}),
 			DeliveryCost: deliveryCost,
@@ -58,8 +58,8 @@ func GenerateMsg() *models.Order {
 		CustomerId:        genID(f),
 		DeliveryService:   f.Company(),
 		Shardkey:          strconv.Itoa(f.IntRange(1, 100)),
-		SmId:              0,
-		DateCreated:       f.PastDate().String(),
+		SmId:              int64(f.IntRange(1, 100)),
+		DateCreated:       time.Now().Format(time.RFC3339),
 		OofShard:          strconv.Itoa(f.IntRange(1, 100)),
 	}
 
@@ -71,21 +71,23 @@ func generateItems(f *gofakeit.Faker, trackNum string) []models.Item {
 	items := make([]models.Item, itemsNum)
 
 	for i := 0; i < itemsNum; i++ {
+		price := int(f.Product().Price)
+		sale := f.IntRange(5, 99)
+		count := f.IntRange(1, 5)
+
 		items[i] = models.Item{
 			ChrtId:      f.Int(),
 			TrackNumber: trackNum,
-			Price:       decimal.NewFromFloat(f.Product().Price),
+			Price:       price,
 			Rid:         genID(f),
 			Name:        f.ProductName(),
-			Sale:        f.IntRange(5, 99),
+			Sale:        sale,
 			Size:        strconv.Itoa(f.IntRange(1, 1000)),
-			Count:       f.IntRange(1, 5),
-			TotalPrice: items[i].Price.Sub(items[i].Price.Div(decimal.NewFromInt(100)).
-				Mul(decimal.NewFromInt(int64(items[i].Sale)))).
-				Mul(decimal.NewFromInt(int64(items[i].Count))),
-			NmId:   f.Int(),
-			Brand:  f.Company(),
-			Status: f.HTTPStatusCode(),
+			Count:       count,
+			TotalPrice:  (price - (price / 100 * sale)) * count,
+			NmId:        f.IntRange(1, 10000000),
+			Brand:       f.Company(),
+			Status:      f.HTTPStatusCode(),
 		}
 	}
 
