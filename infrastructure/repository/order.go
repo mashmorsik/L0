@@ -96,15 +96,14 @@ func (r *OrderRepo) AddOrderItemsTx(tx *sql.Tx, o models.Order) error {
 	return nil
 }
 
-func (r *OrderRepo) GetOrders() ([]*models.Order, error) {
+func (r *OrderRepo) GetOrdersIDTx(tx *sql.Tx) ([]string, error) {
 	var ordersID []string
-	var orders []*models.Order
 
 	sqlGetOrdersID := `
 	SELECT uid 
 	FROM public.order`
 
-	rows, err := r.data.Master().Query(sqlGetOrdersID)
+	rows, err := tx.Query(sqlGetOrdersID)
 	if err != nil {
 		log.Errf("can't get all orders, err: %s", err)
 		return nil, err
@@ -117,79 +116,131 @@ func (r *OrderRepo) GetOrders() ([]*models.Order, error) {
 		}
 		ordersID = append(ordersID, orderID)
 	}
+	return ordersID, nil
+}
 
-	for _, oID := range ordersID {
-		var order models.Order
-		sqlGetOrdersInfo := `
+func (r *OrderRepo) GetOrderInfo(tx *sql.Tx, orderID string, model models.Order) (*models.Order, error) {
+	sqlGetOrdersInfo := `
 		SELECT uid, track_number, entry, locale, internal_signature, customer_id, delivery_service, shard_key, sm_id, date_created, oof_shard 
 		FROM public.order 
 		WHERE uid = $1`
-		rows, err = r.data.Master().Query(sqlGetOrdersInfo, oID)
-		if err != nil {
-			log.Errf("can't get order info, err: %s", err)
+	rows, err := tx.Query(sqlGetOrdersInfo, orderID)
+	if err != nil {
+		log.Errf("can't get order info, err: %s", err)
+		return nil, err
+	}
+	for rows.Next() {
+		if err = rows.Scan(&model.OrderUid, &model.TrackNumber, &model.Entry, &model.Locale, &model.InternalSignature,
+			&model.CustomerId, &model.DeliveryService, &model.Shardkey, &model.SmId, &model.DateCreated, &model.OofShard); err != nil {
 			return nil, err
 		}
-		for rows.Next() {
-			if err = rows.Scan(&order.OrderUid, &order.TrackNumber, &order.Entry, &order.Locale, &order.InternalSignature,
-				&order.CustomerId, &order.DeliveryService, &order.Shardkey, &order.SmId, &order.DateCreated, &order.OofShard); err != nil {
-				return nil, err
-			}
-		}
-		sqlGetDeliveryInfo := `
+	}
+	return &model, nil
+}
+
+func (r *OrderRepo) GetDeliveryInfo(tx *sql.Tx, orderID string, model models.Order) (*models.Order, error) {
+	sqlGetDeliveryInfo := `
 		SELECT name, phone, zip, city, address, region, email 
 		FROM public.delivery
 		WHERE order_id = $1`
-		rows, err = r.data.Master().Query(sqlGetDeliveryInfo, oID)
-		if err != nil {
-			log.Errf("can't get delivery info, err: %s", err)
+	rows, err := tx.Query(sqlGetDeliveryInfo, orderID)
+	if err != nil {
+		log.Errf("can't get delivery info, err: %s", err)
+		return nil, err
+	}
+	for rows.Next() {
+		if err = rows.Scan(&model.Delivery.Name, &model.Delivery.Phone, &model.Delivery.Zip, &model.Delivery.City,
+			&model.Delivery.Address, &model.Delivery.Region, &model.Delivery.Email); err != nil {
 			return nil, err
 		}
-		for rows.Next() {
-			if err = rows.Scan(&order.Delivery.Name, &order.Delivery.Phone, &order.Delivery.Zip, &order.Delivery.City,
-				&order.Delivery.Address, &order.Delivery.Region, &order.Delivery.Email); err != nil {
-				return nil, err
-			}
-		}
-		var paymentDt time.Time
-		sqlGetPaymentInfo := `
+	}
+	return &model, nil
+}
+
+func (r *OrderRepo) GetPaymentInfo(tx *sql.Tx, orderID string, model models.Order) (*models.Order, error) {
+	var paymentDt time.Time
+	sqlGetPaymentInfo := `
 		SELECT transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, 
 		       custom_fee 
 		FROM public.payment 
 		WHERE transaction = $1`
-		rows, err = r.data.Master().Query(sqlGetPaymentInfo, oID)
-		if err != nil {
-			log.Errf("can't get payment info, err: %s", err)
+	rows, err := tx.Query(sqlGetPaymentInfo, orderID)
+	if err != nil {
+		log.Errf("can't get payment info, err: %s", err)
+		return nil, err
+	}
+	for rows.Next() {
+		if err = rows.Scan(&model.Payment.Transaction, &model.Payment.RequestId, &model.Payment.Currency,
+			&model.Payment.Provider, &model.Payment.Amount, &paymentDt, &model.Payment.Bank,
+			&model.Payment.DeliveryCost, &model.Payment.GoodsTotal, &model.Payment.CustomFee); err != nil {
 			return nil, err
 		}
-		for rows.Next() {
-			if err = rows.Scan(&order.Payment.Transaction, &order.Payment.RequestId, &order.Payment.Currency,
-				&order.Payment.Provider, &order.Payment.Amount, &paymentDt, &order.Payment.Bank,
-				&order.Payment.DeliveryCost, &order.Payment.GoodsTotal, &order.Payment.CustomFee); err != nil {
-				return nil, err
-			}
-		}
-		order.Payment.PaymentDt = paymentDt.Unix()
+	}
+	model.Payment.PaymentDt = paymentDt.Unix()
+	return &model, nil
+}
 
-		sqlGetItemsInfo := `
+func (r *OrderRepo) GetItemsInfo(tx *sql.Tx, orderID string, model models.Order) (*models.Order, error) {
+	sqlGetItemsInfo := `
 		SELECT chrt_id, track_number, price, rid, name, sale, size, count, total_price, nm_id, brand, status 
 		FROM public.order_item 
 		WHERE order_id = $1`
-		rows, err = r.data.Master().Query(sqlGetItemsInfo, oID)
-		if err != nil {
-			log.Errf("can't get items info, err: %s", err)
+	rows, err := tx.Query(sqlGetItemsInfo, orderID)
+	if err != nil {
+		log.Errf("can't get items info, err: %s", err)
+		return nil, err
+	}
+	for rows.Next() {
+		var item models.Item
+		if err = rows.Scan(&item.ChrtId, &item.TrackNumber, &item.Price, &item.Rid, &item.Name, &item.Sale,
+			&item.Size, &item.Count, &item.TotalPrice, &item.NmId, &item.Brand, &item.Status); err != nil {
 			return nil, err
 		}
-		for rows.Next() {
-			var item models.Item
-			if err = rows.Scan(&item.ChrtId, &item.TrackNumber, &item.Price, &item.Rid, &item.Name, &item.Sale,
-				&item.Size, &item.Count, &item.TotalPrice, &item.NmId, &item.Brand, &item.Status); err != nil {
-				return nil, err
-			}
-			order.Items = append(order.Items, item)
-		}
-		orders = append(orders, &order)
+		model.Items = append(model.Items, item)
+	}
+	return &model, nil
+}
+
+func (r *OrderRepo) GetOrders() ([]*models.Order, error) {
+	var orders []*models.Order
+
+	tx, err := r.data.Master().Begin()
+	if err != nil {
+		log.Errf("can't begin transaction, err: %s", err)
+	}
+	defer tx.Rollback()
+
+	ordersID, err := r.GetOrdersIDTx(tx)
+	if err != nil {
+		log.Errf("can't get ordersID, err: %s", err)
 	}
 
+	for _, oID := range ordersID {
+		var ord models.Order
+
+		orderInfo, err := r.GetOrderInfo(tx, oID, ord)
+		if err != nil {
+			log.Errf("can't get order info, err: %s", err)
+		}
+
+		deliveryInfo, err := r.GetDeliveryInfo(tx, oID, *orderInfo)
+		if err != nil {
+			log.Errf("can't get delivery info, err: %s", err)
+		}
+
+		paymentInfo, err := r.GetPaymentInfo(tx, oID, *deliveryInfo)
+		if err != nil {
+			log.Errf("can't get payment info, err: %s", err)
+		}
+
+		itemsInfo, err := r.GetItemsInfo(tx, oID, *paymentInfo)
+		if err != nil {
+			log.Errf("can't get delivery info, err: %s", err)
+		}
+
+		orders = append(orders, itemsInfo)
+
+	}
 	return orders, nil
 }
 
@@ -199,6 +250,15 @@ func (r *OrderRepo) CreateOrder(order models.Order) error {
 		log.Errf("can't begin transaction, err: %s", err)
 	}
 	defer tx.Rollback()
+
+	ordersID, err := r.GetOrdersIDTx(tx)
+
+	for _, i := range ordersID {
+		if order.OrderUid == i {
+			log.Infof("Order already exists")
+			return nil
+		}
+	}
 
 	if err = r.AddOrderTx(tx, order); err != nil {
 		log.Errf("can't add order in transaction, err: %s", err)

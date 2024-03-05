@@ -6,6 +6,9 @@ import (
 	"github.com/mashmorsik/L0/internal/order"
 	log "github.com/mashmorsik/L0/pkg/logger"
 	"github.com/nats-io/nats.go"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 const (
@@ -21,6 +24,17 @@ func NewNatsConsumer(o order.CreateOrder) *NatsConsumer {
 }
 
 func (n *NatsConsumer) ConsumeOrders(ctx context.Context, js nats.JetStreamContext) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGKILL)
+
+	go func() {
+		<-sigCh
+		log.Infof("CTRL+C: context done")
+		cancel()
+	}()
+
 	msgCh := make(chan *nats.Msg, 8192)
 	_, err := js.ChanSubscribe(SubjectNameCreated, msgCh)
 	if err != nil {
