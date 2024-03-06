@@ -1,4 +1,4 @@
-package bench
+package main
 
 import (
 	"crypto/md5"
@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// GenerateMsg generates a valid model.Order struct.
 func GenerateMsg() *models.Order {
 	f := gofakeit.New(0)
 

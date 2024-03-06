@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	_ "github.com/golang-migrate/migrate/v4/source/github"
@@ -15,21 +16,22 @@ import (
 )
 
 type Data struct {
-	db *sql.DB
+	Ctx context.Context
+	db  *sql.DB
 }
 
-func NewData(db *sql.DB) *Data {
+func NewData(ctx context.Context, db *sql.DB) *Data {
 	if db == nil {
 		panic("db is nil")
 	}
-	return &Data{db: db}
+	return &Data{Ctx: ctx, db: db}
 }
 
 func (r *Data) Master() *sql.DB {
 	return r.db
 }
 
-func MustConnectPostgres() *sql.DB {
+func MustConnectPostgres(ctx context.Context) *sql.DB {
 	connectionStr := "postgres://postgres:mysecretpassword@localhost:5432/postgres?sslmode=disable&application_name=l0&connect_timeout=5"
 
 	connection, err := sql.Open("postgres", connectionStr)
@@ -40,6 +42,15 @@ func MustConnectPostgres() *sql.DB {
 	if err = connection.Ping(); err != nil {
 		panic(err)
 	}
+
+	go func() {
+		<-ctx.Done()
+		err = connection.Close()
+		if err != nil {
+			log.Errf("can't close database connection, err: %s", err)
+			return
+		}
+	}()
 
 	log.Infof("connected to db: %v", connection)
 	return connection

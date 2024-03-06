@@ -79,7 +79,7 @@ func TestCreateOrder_LoadCache(t *testing.T) {
 	orderCache := cache.NewOrderCache(ctx, time.Hour)
 
 	createOrder := NewCreateOrder(mockRepo, orderCache)
-	err := createOrder.LoadCache()
+	err := createOrder.CacheWarmUp()
 	if err != nil {
 		t.Errorf("failed: can't load cache, err: %s\n", err)
 	}

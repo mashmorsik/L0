@@ -1,8 +1,8 @@
 package order
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/mashmorsik/L0/infrastructure/data/cache"
 	"github.com/mashmorsik/L0/infrastructure/repository"
 	log "github.com/mashmorsik/L0/pkg/logger"
@@ -12,14 +12,16 @@ import (
 )
 
 type CreateOrder struct {
+	Ctx   context.Context
 	Repo  repository.Repository
 	Cache *cache.OrderCache
 }
 
-func NewCreateOrder(repo repository.Repository, orderCache cache.OrderCache) CreateOrder {
-	return CreateOrder{Repo: repo, Cache: &orderCache}
+func NewCreateOrder(ctx context.Context, repo repository.Repository, orderCache cache.OrderCache) CreateOrder {
+	return CreateOrder{Ctx: ctx, Repo: repo, Cache: &orderCache}
 }
 
+// UnmarshalOrder umnmarshals nats.Msg into an order struct.
 func UnmarshalOrder(msg nats.Msg) (*models.Order, error) {
 	order := models.Order{}
 	err := json.Unmarshal(msg.Data, &order)
@@ -31,7 +33,11 @@ func UnmarshalOrder(msg nats.Msg) (*models.Order, error) {
 	return &order, nil
 }
 
+// CreateNewOrder adds a new order to the database and local cache.
 func (c *CreateOrder) CreateNewOrder(order models.Order) error {
+	_, cancel := context.WithTimeout(c.Ctx, time.Second*5)
+	defer cancel()
+
 	err := c.Repo.CreateOrder(order)
 	if err != nil {
 		log.Errf("can't create order, err: %s", err)
@@ -40,14 +46,14 @@ func (c *CreateOrder) CreateNewOrder(order models.Order) error {
 
 	c.Cache.Set(order.OrderUid, order, time.Hour)
 
-	fmt.Println(c.Cache.Get(order.OrderUid))
-
-	time.Sleep(time.Second * 5)
-
 	return nil
 }
 
-func (c *CreateOrder) LoadCache() error {
+// CacheWarmUp fills local cache with orders from the database when the app starts.
+func (c *CreateOrder) CacheWarmUp() error {
+	_, cancel := context.WithTimeout(c.Ctx, time.Second*5)
+	defer cancel()
+
 	orders, err := c.Repo.GetOrders()
 	if err != nil {
 		log.Errf("can't get orders from db, err: %s", err)
@@ -62,10 +68,11 @@ func (c *CreateOrder) LoadCache() error {
 	return nil
 }
 
+// GetOrderFromCache returns the order from the local cache by its id.
 func (c *CreateOrder) GetOrderFromCache(orderID string) (*models.Order, error) {
 	order, ok := c.Cache.Get(orderID)
 	if !ok {
-		log.Infof("no order in cache, orderID: %s", orderID)
+		log.Infof("no order id in cache, orderID: %s", orderID)
 		return nil, nil
 	}
 

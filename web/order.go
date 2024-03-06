@@ -15,6 +15,25 @@ func DisplayOrder(order models.Order) string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Details</title>
+	<style>
+		body {
+			margin-left: 400px;
+		}
+        h1 {
+            text-align: center;
+			margin-left: -600px;
+        }
+        h2 {
+            text-align: center; 
+			margin-left: -600px;
+        }
+       	ul {
+ 			text-align: center;
+		}
+		li {
+			text-align: left;
+		}
+    </style>
 </head>
 <body>
     <h1>Order Details</h1>

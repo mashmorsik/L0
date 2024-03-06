@@ -1,17 +1,22 @@
 package nats
 
 import (
+	"context"
+	_ "github.com/joho/godotenv/autoload"
 	log "github.com/mashmorsik/L0/pkg/logger"
 	"github.com/nats-io/nats.go"
+	"os"
 )
 
-const (
-	StreamName     = "WBORDER"
-	StreamSubjects = "WBORDER.*"
+var (
+	StreamName, _     = os.LookupEnv("JS_STREAM_NAME")
+	StreamSubjects, _ = os.LookupEnv("JS_STREAM_SUBJECTS")
 )
 
-func Connect() (nats.JetStreamContext, error) {
-	stream, err := JetStreamInit()
+// Connect initiates the connection to the nats system and creates new stream if the stream with a defined name is not
+// found.
+func Connect(ctx context.Context) (nats.JetStreamContext, error) {
+	stream, err := JetStreamInit(ctx)
 	if err != nil {
 		log.Errf("can't init stream, err: %s", err)
 	}
@@ -23,7 +28,8 @@ func Connect() (nats.JetStreamContext, error) {
 	return stream, nil
 }
 
-func JetStreamInit() (nats.JetStreamContext, error) {
+// JetStreamInit initiates the connection to the nats system.
+func JetStreamInit(ctx context.Context) (nats.JetStreamContext, error) {
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
 		return nil, err
@@ -34,25 +40,21 @@ func JetStreamInit() (nats.JetStreamContext, error) {
 		return nil, err
 	}
 
+	go func() {
+		<-ctx.Done()
+		nc.Close()
+	}()
+
 	return js, nil
 }
 
+// CreateStream creates new stream if the stream with a defined name is not found.
 func CreateStream(jetStream nats.JetStreamContext) error {
 	stream, err := jetStream.StreamInfo(StreamName)
 	if err != nil {
+		log.Errf("can't get stream info, err: %s", err)
 		return err
 	}
-
-	//stream, err := jetStream.AddStream(&nats.StreamConfig{
-	//	Name:     StreamName,
-	//	Subjects: []string{StreamSubjects},
-	//})
-	//if err != nil {
-	//	log.Errf("can't create stream, err: %s", err)
-	//	return nil
-	//}
-	//
-	//log.Infof("created stream, stream: %v", stream)
 
 	if stream == nil {
 		log.Infof("Creating stream: %s\n", StreamName)
@@ -63,7 +65,7 @@ func CreateStream(jetStream nats.JetStreamContext) error {
 		})
 		if err != nil {
 			log.Errf("can't create stream, err: %s", err)
-			return nil
+			return err
 		}
 	}
 	return nil

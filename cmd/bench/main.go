@@ -3,14 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mashmorsik/L0/bench"
 	"github.com/mashmorsik/L0/infrastructure/nats"
 	"github.com/mashmorsik/L0/infrastructure/nats/producer"
 	log "github.com/mashmorsik/L0/pkg/logger"
 )
 
 func main() {
-	newFakeMsg := bench.GenerateMsg()
+	newFakeMsg := GenerateMsg()
 
 	msgJSON, err := json.Marshal(newFakeMsg)
 	if err != nil {

@@ -11,12 +11,12 @@ import (
 var cache sync.Map
 
 type OrderCache struct {
-	Ctx              context.Context
-	EvictionDuration time.Duration
+	Ctx                    context.Context
+	evictionWorkerDuration time.Duration
 }
 
-func NewOrderCache(ctx context.Context, evictionDuration time.Duration) OrderCache {
-	return OrderCache{Ctx: ctx, EvictionDuration: evictionDuration}
+func NewOrderCache(ctx context.Context, evictionWorkerDuration time.Duration) OrderCache {
+	return OrderCache{Ctx: ctx, evictionWorkerDuration: evictionWorkerDuration}
 }
 
 type Item struct {
@@ -37,7 +37,7 @@ func (c *OrderCache) Get(key string) (*models.Order, bool) {
 		return nil, false
 	}
 
-	item, ok := c.itemTypeCheck(foundItem)
+	item, ok := c.isInvalidType(foundItem)
 	if !ok {
 		return nil, false
 	}
@@ -45,15 +45,17 @@ func (c *OrderCache) Get(key string) (*models.Order, bool) {
 	return &item.Order, true
 }
 
+// evictionWorker iterates over the cached items every c.evictionWorkerDuration, checks if they are of the type *Item
+// and deletes the orders whose storage time has expired.
 func (c *OrderCache) evictionWorker() {
-	ticker := time.NewTicker(c.EvictionDuration)
+	ticker := time.NewTicker(c.evictionWorkerDuration)
 	for {
 		select {
 		case <-c.Ctx.Done():
 			return
 		case <-ticker.C:
 			cache.Range(func(key any, value any) bool {
-				item, ok := c.itemTypeCheck(value)
+				item, ok := c.isInvalidType(value)
 				if !ok {
 					return true
 				}
@@ -68,7 +70,8 @@ func (c *OrderCache) evictionWorker() {
 	}
 }
 
-func (c *OrderCache) itemTypeCheck(foundItem any) (item *Item, invalid bool) {
+// isInvalidType returns false if the item is of the type *Item.
+func (c *OrderCache) isInvalidType(foundItem any) (item *Item, invalid bool) {
 	var cacheItem Item
 	switch foundItem.(type) {
 	case Item:

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/mashmorsik/L0/infrastructure/data"
@@ -10,14 +11,18 @@ import (
 )
 
 type OrderRepo struct {
+	Ctx  context.Context
 	data *data.Data
 }
 
-func NewOrderRepo(data *data.Data) *OrderRepo {
-	return &OrderRepo{data: data}
+func NewOrderRepo(ctx context.Context, data *data.Data) *OrderRepo {
+	return &OrderRepo{data: data, Ctx: ctx}
 }
 
 func (r *OrderRepo) AddOrderTx(tx *sql.Tx, order models.Order) error {
+	_, cancel := context.WithTimeout(r.Ctx, time.Second*5)
+	defer cancel()
+
 	sqlAddOrder := `
 	INSERT INTO public.order(
 	                  uid, track_number, entry, locale, internal_signature, customer_id, delivery_service, 
@@ -37,6 +42,9 @@ func (r *OrderRepo) AddOrderTx(tx *sql.Tx, order models.Order) error {
 }
 
 func (r *OrderRepo) AddDeliveryTx(tx *sql.Tx, o models.Order) error {
+	_, cancel := context.WithTimeout(r.Ctx, time.Second*5)
+	defer cancel()
+
 	sqlAddDelivery := `
 	INSERT INTO public.delivery(
 	                  order_id, name, phone, zip, city, address, region, email
@@ -55,6 +63,9 @@ func (r *OrderRepo) AddDeliveryTx(tx *sql.Tx, o models.Order) error {
 }
 
 func (r *OrderRepo) AddPaymentTx(tx *sql.Tx, o models.Order) error {
+	_, cancel := context.WithTimeout(r.Ctx, time.Second*5)
+	defer cancel()
+
 	sqlAddPayment := `
 	INSERT INTO public.payment(
 	                  transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost,
@@ -75,6 +86,9 @@ func (r *OrderRepo) AddPaymentTx(tx *sql.Tx, o models.Order) error {
 }
 
 func (r *OrderRepo) AddOrderItemsTx(tx *sql.Tx, o models.Order) error {
+	_, cancel := context.WithTimeout(r.Ctx, time.Second*5)
+	defer cancel()
+
 	sqlAddOrderItems := `
 	INSERT INTO public.order_item(
 	                  order_id, chrt_id, track_number, price, rid, name, sale, size, count, total_price, nm_id, brand,
@@ -97,6 +111,9 @@ func (r *OrderRepo) AddOrderItemsTx(tx *sql.Tx, o models.Order) error {
 }
 
 func (r *OrderRepo) GetOrdersIDTx(tx *sql.Tx) ([]string, error) {
+	_, cancel := context.WithTimeout(r.Ctx, time.Second*5)
+	defer cancel()
+
 	var ordersID []string
 
 	sqlGetOrdersID := `
@@ -120,6 +137,9 @@ func (r *OrderRepo) GetOrdersIDTx(tx *sql.Tx) ([]string, error) {
 }
 
 func (r *OrderRepo) GetOrderInfo(tx *sql.Tx, orderID string, model models.Order) (*models.Order, error) {
+	_, cancel := context.WithTimeout(r.Ctx, time.Second*5)
+	defer cancel()
+
 	sqlGetOrdersInfo := `
 		SELECT uid, track_number, entry, locale, internal_signature, customer_id, delivery_service, shard_key, sm_id, date_created, oof_shard 
 		FROM public.order 
@@ -139,6 +159,9 @@ func (r *OrderRepo) GetOrderInfo(tx *sql.Tx, orderID string, model models.Order)
 }
 
 func (r *OrderRepo) GetDeliveryInfo(tx *sql.Tx, orderID string, model models.Order) (*models.Order, error) {
+	_, cancel := context.WithTimeout(r.Ctx, time.Second*5)
+	defer cancel()
+
 	sqlGetDeliveryInfo := `
 		SELECT name, phone, zip, city, address, region, email 
 		FROM public.delivery
@@ -158,6 +181,9 @@ func (r *OrderRepo) GetDeliveryInfo(tx *sql.Tx, orderID string, model models.Ord
 }
 
 func (r *OrderRepo) GetPaymentInfo(tx *sql.Tx, orderID string, model models.Order) (*models.Order, error) {
+	_, cancel := context.WithTimeout(r.Ctx, time.Second*5)
+	defer cancel()
+
 	var paymentDt time.Time
 	sqlGetPaymentInfo := `
 		SELECT transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, 
@@ -181,6 +207,9 @@ func (r *OrderRepo) GetPaymentInfo(tx *sql.Tx, orderID string, model models.Orde
 }
 
 func (r *OrderRepo) GetItemsInfo(tx *sql.Tx, orderID string, model models.Order) (*models.Order, error) {
+	_, cancel := context.WithTimeout(r.Ctx, time.Second*5)
+	defer cancel()
+
 	sqlGetItemsInfo := `
 		SELECT chrt_id, track_number, price, rid, name, sale, size, count, total_price, nm_id, brand, status 
 		FROM public.order_item 
